@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<meta charset="utf-8" />
+	<link rel="stylesheet" type="text/css" href="style.css" />
+	<style>
+		html,
+		body {
+			margin: 0;
+			padding: 0;
+		}
+
+		canvas {
+			display: block;
+		}
+	</style>
+</head>
+
+<body>
+	<script type="module">
+		if (!window.IS_PRODUCTION) {
+			new EventSource('/esbuild').addEventListener('change', () => location.reload())
+		}
+	</script>
+	<script src="murmuration.js" type="module"></script>
+</body>
+
+</html>
