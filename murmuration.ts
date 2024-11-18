@@ -41,6 +41,7 @@ class Bird {
 				// if (dist.mag() < 20) {
 				let force = dist.copy().setMag(1 / dist.magSq() * 2000)
 				this.acc = this.acc.add(force)
+				this.debugForce(p, force, "green")
 				// }
 				// Force becomes larger the smaller the distance.
 				// debugger
@@ -58,22 +59,24 @@ class Bird {
 			}
 			centerOfMass.div(neighbors.length)
 
-			if (p) {
-				p.stroke("red")
-				p.fill("red")
-				p.circle(centerOfMass.x, centerOfMass.y, 2)
-			}
+			// if (p) {
+			// 	p.stroke("red")
+			// 	p.fill("red")
+			// 	p.circle(centerOfMass.x, centerOfMass.y, 2)
+			// }
 
 			const force = centerOfMass.sub(this.pos).setMag(20)
 			this.acc = this.acc.add(force)
+			this.debugForce(p, force, "red")
 		}
 
 		// Drag
-		{
-			let dragMag = this.vel.magSq() / 1000
-			let drag = this.vel.copy().mult(-1).setMag(dragMag)
-			this.acc = this.acc.add(drag)
-		}
+		// {
+		// 	let dragMag = this.vel.magSq() / 1000
+		// 	let drag = this.vel.copy().mult(-1).setMag(dragMag)
+		// 	this.acc = this.acc.add(drag)
+		// 	this.debugForce(p, drag, "cyan")
+		// }
 
 		// Repelling force from edges
 		// {
@@ -140,6 +143,17 @@ class Bird {
 
 		p.line(start.x, start.y, end.x, end.y)
 	}
+
+	debugForce(p: p5, force: p5.Vector, color: string) {
+		if (p === undefined) {
+			return
+		}
+
+		p.stroke(color)
+		p.strokeWeight(1)
+		let end = this.pos.copy().add(force)
+		p.line(this.pos.x, this.pos.y, end.x, end.y)
+	}
 }
 
 let sketch = (p: p5) => {
@@ -181,10 +195,10 @@ let sketch = (p: p5) => {
 		for (let bird of z0) {
 			// bird.acc.mult(p.deltaTime / 1000)
 			bird.vel.add(bird.acc)
-			// if (bird.vel.mag() > 200) {
-			// 	// Boids can't move more than 200px per second.
-			// 	bird.vel.setMag(200)
-			// }
+			if (bird.vel.mag() > 200) {
+				// Boids can't move more than 200px per second.
+				bird.vel.setMag(200)
+			}
 			let deltaV = bird.vel.copy().mult(dt)
 			bird.pos.add(deltaV)
 			bird.draw(p)
