@@ -51,7 +51,22 @@ class Bird {
 			}
 		}
 
-		// Alignment: steer towards center of mass of neighbors.
+		// Alignment: steer towards average heading.
+		{
+			let averageHeading = new p5.Vector()
+			for (const bird of neighbors) {
+				let heading = bird.vel.copy().normalize()
+				averageHeading.add(heading)
+			}
+			averageHeading.div(neighbors.length)
+
+			// Create a steering force towards the average heading
+			const force = averageHeading.setMag(10)
+			this.acc = this.acc.add(force)
+			this.debugForce(p, force, "blue")
+		}
+
+		// Cohesion: steer towards center of mass of neighbors.
 		{
 			let centerOfMass = new p5.Vector()
 			for (const bird of neighbors) {
@@ -71,64 +86,58 @@ class Bird {
 		}
 
 		// Drag
-		// {
-		// 	let dragMag = this.vel.magSq() / 1000
-		// 	let drag = this.vel.copy().mult(-1).setMag(dragMag)
-		// 	this.acc = this.acc.add(drag)
-		// 	this.debugForce(p, drag, "cyan")
-		// }
+		{
+			let dragMag = this.vel.magSq() / 10000
+			let drag = this.vel.copy().mult(-1).setMag(dragMag)
+			this.acc = this.acc.add(drag)
+			this.debugForce(p, drag, "cyan")
+		}
+
+		let forceMag = (dist: number) => {
+			dist = Math.abs(dist)
+			if (dist > 50) {
+				return 0
+			}
+			let scale = 1 / (dist / 50)
+			return 20 * scale
+		}
 
 		// Repelling force from edges
-		// {
-		// 	// Top edge
-		// 	let edge = new p5.Vector(this.pos.x, 0)
-		// 	let dist = this.pos.copy().sub(edge)
-		// 	// A force that is the opposite of the x component of velocity when distance is 0.
-		// 	let forceMag = this.vel.y / ((dist.y + 1)) * -1
-		// 	let force = new p5.Vector(0, forceMag)
+		{
+			// Top edge
+			let edge = new p5.Vector(this.pos.x, 0)
+			let dist = this.pos.copy().sub(edge)
+			let force = new p5.Vector(0, forceMag(dist.y))
+			this.debugForce(p, force, "yellow", edge)
+			this.acc.add(force)
+		}
 
-		// 	if (p) {
-		// 		let end = edge.copy().add(force)
-		// 		p.stroke("red")
-		// 		p.line(edge.x, edge.y, end.x, end.y)
-		// 	}
+		// Bottom edge
+		{
+			let edge = new p5.Vector(this.pos.x, p.height)
+			let dist = this.pos.copy().sub(edge)
+			let force = new p5.Vector(0, -forceMag(dist.y))
+			this.debugForce(p, force, "yellow", edge)
+			this.acc.add(force)
+		}
 
-		// 	this.acc.add(force)
-		// }
+		// Left edge
+		{
+			let edge = new p5.Vector(0, this.pos.y)
+			let dist = this.pos.copy().sub(edge)
+			let force = new p5.Vector(forceMag(dist.x), 0)
+			this.debugForce(p, force, "yellow", edge)
+			this.acc.add(force)
+		}
 
-		// {
-		// 	// Bottom edge
-		// 	let edge = new p5.Vector(this.pos.x, p.height)
-		// 	let dist = this.pos.copy().sub(edge)
-		// 	// A force that is the opposite of the x component of velocity when distance is 0.
-		// 	let forceMag = this.vel.y / ((dist.y + 1)) * -1
-		// 	let force = new p5.Vector(0, forceMag)
-
-		// 	if (p) {
-		// 		let end = edge.copy().add(force)
-		// 		p.stroke("red")
-		// 		p.line(edge.x, edge.y, end.x, end.y)
-		// 	}
-
-		// 	this.acc.add(force)
-		// }
-
-		// {
-		// 	// Left edge
-		// 	let edge = new p5.Vector(0, this.pos.y)
-		// 	let dist = this.pos.copy().sub(edge)
-		// 	// A force that is the opposite of the x component of velocity when distance is 0.
-		// 	let forceMag = this.vel.x / ((dist.x + 1)) * -1
-		// 	let force = new p5.Vector(forceMag, 0)
-
-		// 	if (p) {
-		// 		let end = edge.copy().add(force)
-		// 		p.stroke("red")
-		// 		p.line(edge.x, edge.y, end.x, end.y)
-		// 	}
-
-		// 	this.acc.add(force)
-		// }
+		// Right edge
+		{
+			let edge = new p5.Vector(p.width, this.pos.y)
+			let dist = this.pos.copy().sub(edge)
+			let force = new p5.Vector(-forceMag(dist.x), 0)
+			this.debugForce(p, force, "yellow", edge)
+			this.acc.add(force)
+		}
 	}
 
 	isVisible(p: p5): boolean {
@@ -144,15 +153,19 @@ class Bird {
 		p.line(start.x, start.y, end.x, end.y)
 	}
 
-	debugForce(p: p5, force: p5.Vector, color: string) {
+	debugForce(p: p5, force: p5.Vector, color: string, pos?: p5.Vector) {
 		if (p === undefined) {
 			return
 		}
 
+		if (pos == undefined) {
+			pos = this.pos
+		}
+
 		p.stroke(color)
 		p.strokeWeight(1)
-		let end = this.pos.copy().add(force)
-		p.line(this.pos.x, this.pos.y, end.x, end.y)
+		let end = pos.copy().add(force)
+		p.line(pos.x, pos.y, end.x, end.y)
 	}
 }
 
@@ -163,7 +176,7 @@ let sketch = (p: p5) => {
 		p.createCanvas(window.innerWidth, window.innerHeight)
 		let vel = new p5.Vector(0)
 		// vel.setMag(1)
-		for (let i = 0; i < 100; i++) {
+		for (let i = 0; i < 200; i++) {
 			let b = new Bird(p, 20, 3, 110)
 			z0.push(b)
 		}
@@ -175,8 +188,8 @@ let sketch = (p: p5) => {
 
 	p.draw = () => {
 		p.background(0)
-		let mouse = p.createVector(p.mouseX, p.mouseY)
-		let center = p.createVector(p.width / 2, p.height / 2)
+		let mouse = new p5.Vector(p.mouseX, p.mouseY)
+		let center = new p5.Vector(p.width / 2, p.height / 2)
 		let direction = mouse.copy().sub(center).normalize()
 		let fb0 = new Flatbush(z0.length)
 		for (let bird of z0) {
@@ -192,12 +205,19 @@ let sketch = (p: p5) => {
 		}
 
 		const dt = p.deltaTime / 1000
+		const radiansPerSecond = (2 * Math.PI) / 8
 		for (let bird of z0) {
 			// bird.acc.mult(p.deltaTime / 1000)
+			// let angle = bird.vel.angleBetween(bird.acc)
+			// if (Math.abs(angle) > radiansPerSecond) {
+			// 	angle = bird.vel.heading() + Math.abs(angle) * radiansPerSecond
+			// 	// Boids can't turn faster than an 8th of a full rotation
+			// 	bird.acc.setHeading(angle)
+			// }
 			bird.vel.add(bird.acc)
-			if (bird.vel.mag() > 200) {
-				// Boids can't move more than 200px per second.
-				bird.vel.setMag(200)
+			if (bird.vel.mag() > 150) {
+				// Boids can't move more than 150px per second.
+				bird.vel.setMag(150)
 			}
 			let deltaV = bird.vel.copy().mult(dt)
 			bird.pos.add(deltaV)
