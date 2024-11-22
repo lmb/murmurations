@@ -87,7 +87,7 @@ class Bird {
 
 		// Drag
 		{
-			let dragMag = this.vel.magSq() / 3000
+			let dragMag = this.vel.magSq() / 1500
 			let drag = this.vel.copy().mult(-1).setMag(dragMag)
 			this.acc = this.acc.add(drag)
 			this.debugForce(p, drag, "cyan")
@@ -222,7 +222,7 @@ let sketch = (p: p5) => {
 	p.setup = () => {
 		let canvas = document.getElementById('canvas')!
 		const maxNeighbors = numBoids / 4
-		let neighborCount = maxNeighbors / 2
+		let neighborCount = maxNeighbors
 		neighborSlider.value = neighborCount.toString()
 		neighborSlider.max = maxNeighbors.toString()
 		p.createCanvas(canvas.clientWidth, canvas.clientHeight, canvas)
@@ -241,7 +241,7 @@ let sketch = (p: p5) => {
 		z1.update(p, numNeighbors)
 		z2.update(p, numNeighbors)
 
-		separationSlider.value = scale.toString()
+		cohesionSlider.value = scale.toString()
 
 		z0.draw(p, 4, 1, "#1673f8")
 		z1.draw(p, 6, 2, "#5478b1")
