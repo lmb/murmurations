@@ -34,7 +34,7 @@ class Bird {
 		return { start, end }
 	}
 
-	update(neighbors: Bird[], p: p5) {
+	update(neighbors: Bird[], width: number, height: number, p?: p5) {
 		this.acc = new p5.Vector()
 
 		// Separation: avoid colliding with neighbors.
@@ -104,10 +104,12 @@ class Bird {
 			return 10 * scale
 		}
 
+		const overshoot = 0
+
 		// Repelling force from edges
 		{
 			// Top edge
-			let edge = new p5.Vector(this.pos.x, 0)
+			let edge = new p5.Vector(this.pos.x, -overshoot)
 			let dist = this.pos.copy().sub(edge)
 			let force = new p5.Vector(0, forceMag(dist.y))
 			this.debugForce(p, force, "yellow", edge)
@@ -116,7 +118,7 @@ class Bird {
 
 		// Bottom edge
 		{
-			let edge = new p5.Vector(this.pos.x, p.height)
+			let edge = new p5.Vector(this.pos.x, height + overshoot)
 			let dist = this.pos.copy().sub(edge)
 			let force = new p5.Vector(0, -forceMag(dist.y))
 			this.debugForce(p, force, "yellow", edge)
@@ -125,7 +127,7 @@ class Bird {
 
 		// Left edge
 		{
-			let edge = new p5.Vector(0, this.pos.y)
+			let edge = new p5.Vector(-overshoot, this.pos.y)
 			let dist = this.pos.copy().sub(edge)
 			let force = new p5.Vector(forceMag(dist.x), 0)
 			this.debugForce(p, force, "yellow", edge)
@@ -134,16 +136,12 @@ class Bird {
 
 		// Right edge
 		{
-			let edge = new p5.Vector(p.width, this.pos.y)
+			let edge = new p5.Vector(width + overshoot, this.pos.y)
 			let dist = this.pos.copy().sub(edge)
 			let force = new p5.Vector(-forceMag(dist.x), 0)
 			this.debugForce(p, force, "yellow", edge)
 			this.acc.add(force)
 		}
-	}
-
-	isVisible(p: p5): boolean {
-		return this.pos.x < -100 || this.pos.x > p.width + 100 || this.pos.y < -100 || this.pos.y > p.height + 100
 	}
 
 	draw(p: p5) {
@@ -155,13 +153,18 @@ class Bird {
 		p.line(start.x, start.y, end.x, end.y)
 	}
 
-	debugForce(p: p5, force: p5.Vector, color: string, pos?: p5.Vector) {
-		if (p === undefined) {
+	debugForce(p: p5 | undefined, force: p5.Vector, color: string, pos?: p5.Vector) {
+		if (!p) {
 			return
 		}
 
-		if (pos == undefined) {
+		if (!pos) {
 			pos = this.pos
+		}
+
+		if (force.mag() > 500) {
+			// Avoid rendering infinity things. Where does the infinity come from though?
+			return
 		}
 
 		p.stroke(color)
@@ -173,6 +176,7 @@ class Bird {
 
 let sketch = (p: p5) => {
 	let z0: Bird[] = []
+	let perlinT = 0
 
 	p.setup = () => {
 		let canvas = document.getElementById('canvas')!
@@ -198,7 +202,12 @@ let sketch = (p: p5) => {
 		}
 		fb0.finish()
 
-		let neighborCount = parseInt(neighborSlider.value)
+
+		const maxNeighbors = z0.length / 4
+		let neighborCount = Math.round(p.map(p.noise(perlinT), 0, 1, 6, maxNeighbors))
+		neighborSlider.value = neighborCount.toString()
+		neighborSlider.max = maxNeighbors.toString()
+		perlinT += 0.005
 
 		for (let bird of z0) {
 			let neighborIds = fb0.neighbors(bird.pos.x, bird.pos.y, neighborCount + 1)
@@ -206,19 +215,11 @@ let sketch = (p: p5) => {
 			neighborIds.shift()
 			let neighbors = neighborIds.map((id: number) => z0[id])
 
-			bird.update(neighbors, p)
+			bird.update(neighbors, p.width, p.height, p)
 		}
 
 		const dt = p.deltaTime / 1000
-		const radiansPerSecond = (2 * Math.PI) / 8
 		for (let bird of z0) {
-			// bird.acc.mult(p.deltaTime / 1000)
-			// let angle = bird.vel.angleBetween(bird.acc)
-			// if (Math.abs(angle) > radiansPerSecond) {
-			// 	angle = bird.vel.heading() + Math.abs(angle) * radiansPerSecond
-			// 	// Boids can't turn faster than an 8th of a full rotation
-			// 	bird.acc.setHeading(angle)
-			// }
 			bird.vel.add(bird.acc)
 
 			let deltaV = bird.vel.copy().mult(dt)
