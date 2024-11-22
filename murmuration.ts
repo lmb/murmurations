@@ -222,7 +222,7 @@ let sketch = (p: p5) => {
 	p.setup = () => {
 		let canvas = document.getElementById('canvas')!
 		const maxNeighbors = numBoids / 4
-		let neighborCount = maxNeighbors
+		let neighborCount = maxNeighbors / 2
 		neighborSlider.value = neighborCount.toString()
 		neighborSlider.max = maxNeighbors.toString()
 		p.createCanvas(canvas.clientWidth, canvas.clientHeight, canvas)
