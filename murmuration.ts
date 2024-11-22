@@ -34,7 +34,7 @@ class Bird {
 		return { start, end }
 	}
 
-	update(neighbors: Bird[], width: number, height: number, p?: p5) {
+	update(neighbors: Bird[], width: number, height: number, overshoot: number = 0, p?: p5) {
 		this.acc = new p5.Vector()
 
 		// Separation: avoid colliding with neighbors.
@@ -95,50 +95,21 @@ class Bird {
 			this.debugForce(p, drag, "cyan")
 		}
 
-		let forceMag = (dist: number) => {
-			dist = Math.abs(dist)
-			if (dist > 50) {
-				return 0
-			}
-			let scale = 1 / (dist / 50)
-			return 10 * scale
+		let forceMag = (dist: p5.Vector) => {
+			return 500 / dist.mag()
 		}
-
-		const overshoot = 0
 
 		// Repelling force from edges
-		{
-			// Top edge
-			let edge = new p5.Vector(this.pos.x, -overshoot)
-			let dist = this.pos.copy().sub(edge)
-			let force = new p5.Vector(0, forceMag(dist.y))
-			this.debugForce(p, force, "yellow", edge)
-			this.acc.add(force)
-		}
+		const edges = [
+			new p5.Vector(this.pos.x, -overshoot), // top
+			new p5.Vector(this.pos.x, height + overshoot), // bottom
+			new p5.Vector(-overshoot, this.pos.y), // left
+			new p5.Vector(width + overshoot, this.pos.y), // right
+		]
 
-		// Bottom edge
-		{
-			let edge = new p5.Vector(this.pos.x, height + overshoot)
+		for (let edge of edges) {
 			let dist = this.pos.copy().sub(edge)
-			let force = new p5.Vector(0, -forceMag(dist.y))
-			this.debugForce(p, force, "yellow", edge)
-			this.acc.add(force)
-		}
-
-		// Left edge
-		{
-			let edge = new p5.Vector(-overshoot, this.pos.y)
-			let dist = this.pos.copy().sub(edge)
-			let force = new p5.Vector(forceMag(dist.x), 0)
-			this.debugForce(p, force, "yellow", edge)
-			this.acc.add(force)
-		}
-
-		// Right edge
-		{
-			let edge = new p5.Vector(width + overshoot, this.pos.y)
-			let dist = this.pos.copy().sub(edge)
-			let force = new p5.Vector(-forceMag(dist.x), 0)
+			let force = dist.copy().normalize().mult(500 / dist.mag())
 			this.debugForce(p, force, "yellow", edge)
 			this.acc.add(force)
 		}
@@ -215,7 +186,7 @@ let sketch = (p: p5) => {
 			neighborIds.shift()
 			let neighbors = neighborIds.map((id: number) => z0[id])
 
-			bird.update(neighbors, p.width, p.height, p)
+			bird.update(neighbors, p.width, p.height, 0, p)
 		}
 
 		const dt = p.deltaTime / 1000
