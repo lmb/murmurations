@@ -95,22 +95,34 @@ class Bird {
 			this.debugForce(p, drag, "cyan")
 		}
 
-		let forceMag = (dist: p5.Vector) => {
-			return 500 / dist.mag()
-		}
-
 		// Repelling force from edges
 		const edges = [
-			new p5.Vector(this.pos.x, -overshoot), // top
-			new p5.Vector(this.pos.x, height + overshoot), // bottom
-			new p5.Vector(-overshoot, this.pos.y), // left
-			new p5.Vector(width + overshoot, this.pos.y), // right
+			{
+				pos: new p5.Vector(this.pos.x, -overshoot),
+				clamp: (v: p5.Vector) => v.y = Math.max(0, v.y),
+			}, // top
+			{
+				pos: new p5.Vector(this.pos.x, height + overshoot),
+				clamp: (v: p5.Vector) => v.y = Math.min(0, v.y)
+			}, // bottom
+			{
+				pos: new p5.Vector(-overshoot, this.pos.y),
+				clamp: (v: p5.Vector) => v.x = Math.max(0, v.x),
+			}, // left
+			{
+				pos: new p5.Vector(width + overshoot, this.pos.y),
+				clamp: (v: p5.Vector) => v.x = Math.min(0, v.x),
+			}, // right
 		]
 
 		for (let edge of edges) {
-			let dist = this.pos.copy().sub(edge)
-			let force = dist.copy().normalize().mult(500 / dist.mag())
-			this.debugForce(p, force, "yellow", edge)
+			let dist = this.pos.copy().sub(edge.pos)
+
+			// Ensure that particles can't get to the "invisible" side of the edge.
+			edge.clamp(dist)
+
+			let force = dist.copy().normalize().mult(800 / dist.mag())
+			this.debugForce(p, force, "yellow", edge.pos)
 			this.acc.add(force)
 		}
 	}
