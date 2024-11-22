@@ -1,6 +1,11 @@
 import p5 from 'p5'
 import Flatbush from 'flatbush'
 
+let neighborSlider = document.getElementById("neighbors")! as HTMLInputElement
+let separationSlider = document.getElementById("separation")! as HTMLInputElement
+let cohesionSlider = document.getElementById("cohesion")! as HTMLInputElement
+let alignmentSlider = document.getElementById("alignment")! as HTMLInputElement
+
 class Bird {
 	pos: p5.Vector
 	vel: p5.Vector
@@ -37,21 +42,16 @@ class Bird {
 		// If the distance is closer than some threshold, move away in the opposite direction.
 		{
 			for (let boid of neighbors) {
+				let scale = parseFloat(separationSlider.value)
 				let dist = this.pos.copy().sub(boid.pos)
-				// if (dist.mag() < 20) {
-				let force = dist.copy().setMag(1 / dist.magSq() * 2000)
+				let force = dist.copy().setMag(1 / dist.magSq() * 2000 * scale)
 				this.acc = this.acc.add(force)
 				this.debugForce(p, force, "green")
-				// }
-				// Force becomes larger the smaller the distance.
-				// debugger
-				// let force = dist.normalize()
-
-				// 		// this.acc.add(Math.min(1 / dist ** 2, 1.0))
 			}
 		}
 
 		// Alignment: steer towards average heading.
+		// This is the only input of acceleration into the system.
 		{
 			let averageHeading = new p5.Vector()
 			for (const bird of neighbors) {
@@ -61,7 +61,8 @@ class Bird {
 			averageHeading.div(neighbors.length)
 
 			// Create a steering force towards the average heading
-			const force = averageHeading.setMag(10)
+			let scale = parseFloat(alignmentSlider.value)
+			const force = averageHeading.setMag(10 * scale)
 			this.acc = this.acc.add(force)
 			this.debugForce(p, force, "blue")
 		}
@@ -74,20 +75,21 @@ class Bird {
 			}
 			centerOfMass.div(neighbors.length)
 
-			// if (p) {
-			// 	p.stroke("red")
-			// 	p.fill("red")
-			// 	p.circle(centerOfMass.x, centerOfMass.y, 2)
-			// }
+			if (p) {
+				p.stroke("red")
+				p.fill("red")
+				p.circle(centerOfMass.x, centerOfMass.y, 2)
+			}
 
-			const force = centerOfMass.sub(this.pos).setMag(20)
+			let scale = parseFloat(cohesionSlider.value)
+			const force = centerOfMass.sub(this.pos).setMag(20 * scale)
 			this.acc = this.acc.add(force)
-			this.debugForce(p, force, "red")
+			// this.debugForce(p, force, "red")
 		}
 
 		// Drag
 		{
-			let dragMag = this.vel.magSq() / 10000
+			let dragMag = this.vel.magSq() / 3000
 			let drag = this.vel.copy().mult(-1).setMag(dragMag)
 			this.acc = this.acc.add(drag)
 			this.debugForce(p, drag, "cyan")
@@ -99,7 +101,7 @@ class Bird {
 				return 0
 			}
 			let scale = 1 / (dist / 50)
-			return 20 * scale
+			return 10 * scale
 		}
 
 		// Repelling force from edges
@@ -173,10 +175,11 @@ let sketch = (p: p5) => {
 	let z0: Bird[] = []
 
 	p.setup = () => {
-		p.createCanvas(window.innerWidth, window.innerHeight)
+		let canvas = document.getElementById('canvas')!
+		p.createCanvas(canvas.clientWidth, canvas.clientHeight, canvas)
 		let vel = new p5.Vector(0)
 		// vel.setMag(1)
-		for (let i = 0; i < 200; i++) {
+		for (let i = 0; i < 400; i++) {
 			let b = new Bird(p, 20, 3, 110)
 			z0.push(b)
 		}
@@ -188,17 +191,19 @@ let sketch = (p: p5) => {
 
 	p.draw = () => {
 		p.background(0)
-		let mouse = new p5.Vector(p.mouseX, p.mouseY)
-		let center = new p5.Vector(p.width / 2, p.height / 2)
-		let direction = mouse.copy().sub(center).normalize()
+
 		let fb0 = new Flatbush(z0.length)
 		for (let bird of z0) {
 			fb0.add(bird.pos.x, bird.pos.y)
 		}
 		fb0.finish()
 
+		let neighborCount = parseInt(neighborSlider.value)
+
 		for (let bird of z0) {
-			let neighborIds = fb0.neighbors(bird.pos.x, bird.pos.y, 6)
+			let neighborIds = fb0.neighbors(bird.pos.x, bird.pos.y, neighborCount + 1)
+			// The first item is bird itself since it has distance 0.
+			neighborIds.shift()
 			let neighbors = neighborIds.map((id: number) => z0[id])
 
 			bird.update(neighbors, p)
@@ -215,10 +220,7 @@ let sketch = (p: p5) => {
 			// 	bird.acc.setHeading(angle)
 			// }
 			bird.vel.add(bird.acc)
-			if (bird.vel.mag() > 150) {
-				// Boids can't move more than 150px per second.
-				bird.vel.setMag(150)
-			}
+
 			let deltaV = bird.vel.copy().mult(dt)
 			bird.pos.add(deltaV)
 			bird.draw(p)
