@@ -10,25 +10,17 @@ class Bird {
 	pos: p5.Vector
 	vel: p5.Vector
 	acc: p5.Vector
-	len: number
-	thickness: number
-	colour: number
 
-	constructor(p: p5, len: number, thickness: number, colour: number) {
-		const x = p.randomGaussian(p.width / 2, p.width / 2 / 4)
-		const y = p.randomGaussian(p.height / 2, p.height / 2 / 4)
+	constructor(x: number, y: number) {
 		this.pos = new p5.Vector(x, y)
 		this.vel = new p5.Vector()
 		this.acc = new p5.Vector()
-		this.len = len
-		this.thickness = thickness
-		this.colour = colour
 	}
 
-	coordinates(): { start: p5.Vector, end: p5.Vector } {
+	coordinates(len: number): { start: p5.Vector, end: p5.Vector } {
 		let direction = p5.Vector.fromAngle(this.vel.heading())
 		// TODO: Is there a better way to do this?
-		direction.setMag(this.len / 2)
+		direction.setMag(len / 2)
 		let start = this.pos.copy().sub(direction)
 		let end = this.pos.copy().add(direction)
 		return { start, end }
@@ -133,11 +125,11 @@ class Bird {
 		}
 	}
 
-	draw(p: p5) {
-		p.stroke(this.colour)
-		p.strokeWeight(this.thickness)
+	draw(p: p5, len: number, weight: number, colour: string) {
+		p.stroke(colour)
+		p.strokeWeight(weight)
 
-		let { start, end } = this.coordinates()
+		let { start, end } = this.coordinates(len)
 
 		p.line(start.x, start.y, end.x, end.y)
 	}
@@ -163,71 +155,93 @@ class Bird {
 	}
 }
 
+class Murmuration {
+	z0: Bird[] = []
+	neighborsT = 0
+	predator = new p5.Vector()
+	predatorT = 0
+
+	constructor(p: p5, num: number) {
+		for (let i = 0; i < num; i++) {
+			const x = p.randomGaussian(p.width / 2, p.width / 2 / 4)
+			const y = p.randomGaussian(p.height / 2, p.height / 2 / 4)
+			let b = new Bird(x, y)
+			this.z0.push(b)
+		}
+	}
+
+	update(p: p5, numNeighbors: number): number {
+		let fb0 = new Flatbush(this.z0.length)
+		for (let bird of this.z0) {
+			fb0.add(bird.pos.x, bird.pos.y)
+		}
+		fb0.finish()
+
+		let scale = p.map(p.noise(this.neighborsT), 0, 1, -0.5, 1)
+		this.neighborsT += 0.02
+
+		// Update predator
+		this.predator.x = p.map(p.noise(this.predatorT), 0, 1, 0, p.width)
+		this.predator.y = p.map(p.noise(this.predatorT + 1337), 0, 1, 0, p.height)
+		this.predatorT += 0.005
+
+		for (let bird of this.z0) {
+			let neighborIds = fb0.neighbors(bird.pos.x, bird.pos.y, numNeighbors + 1)
+			// The first item is bird itself since it has distance 0.
+			neighborIds.shift()
+			let neighbors = neighborIds.map((id: number) => this.z0[id])
+
+			bird.update(neighbors, this.predator, scale, p.width, p.height, 50, undefined)
+		}
+
+		return scale
+	}
+
+	draw(p: p5, len: number, weight: number, color: string) {
+		const dt = p.deltaTime / 1000
+		for (let bird of this.z0) {
+			bird.vel.add(bird.acc)
+
+			let deltaV = bird.vel.copy().mult(dt)
+			bird.pos.add(deltaV)
+			bird.draw(p, len, weight, color)
+		}
+
+		// p.fill("cyan")
+		// p.stroke(0)
+		// p.circle(this.predator.x, this.predator.y, 10)
+	}
+}
+
 let sketch = (p: p5) => {
-	let z0: Bird[] = []
-	let neighborsT = 0
-	let predator: p5.Vector
-	let predatorT = 0
+	const numBoids = 400
+	let z0: Murmuration
+	let z1: Murmuration
 
 	p.setup = () => {
 		let canvas = document.getElementById('canvas')!
+		const maxNeighbors = numBoids / 4
+		let neighborCount = maxNeighbors / 2
+		neighborSlider.value = neighborCount.toString()
+		neighborSlider.max = maxNeighbors.toString()
 		p.createCanvas(canvas.clientWidth, canvas.clientHeight, canvas)
-		predator = new p5.Vector(p.random(0, p.height), p.random(0, p.width))
-		for (let i = 0; i < 400; i++) {
-			let b = new Bird(p, 20, 3, 110)
-			z0.push(b)
-		}
-		// vel.setMag(vel.mag() * 2)
-		// for (let i = 0; i < 100; i++) {
-		// 	z1.push(new Bird(p, 30, 5, 150, vel))
-		// }
+
+		z0 = new Murmuration(p, numBoids)
+		z1 = new Murmuration(p, numBoids)
 	}
 
 	p.draw = () => {
 		p.background(0)
 
-		let fb0 = new Flatbush(z0.length)
-		for (let bird of z0) {
-			fb0.add(bird.pos.x, bird.pos.y)
-		}
-		fb0.finish()
+		let numNeighbors = parseInt(neighborSlider.value)
 
-		const maxNeighbors = z0.length / 4
-		// let neighborCount = Math.round(p.map(p.noise(neighborsT), 0, 1, 6, maxNeighbors))
-		let neighborCount = maxNeighbors / 2
-		neighborSlider.value = neighborCount.toString()
-		neighborSlider.max = maxNeighbors.toString()
+		let scale = z0.update(p, numNeighbors)
+		z1.update(p, numNeighbors)
 
-		let scale = p.map(p.noise(neighborsT), 0, 1, -0.5, 1)
-		neighborsT += 0.02
 		separationSlider.value = scale.toString()
 
-		// Update predator
-		predator.x = p.map(p.noise(predatorT), 0, 1, 0, p.width)
-		predator.y = p.map(p.noise(predatorT + 1337), 0, 1, 0, p.height)
-		predatorT += 0.005
-
-		for (let bird of z0) {
-			let neighborIds = fb0.neighbors(bird.pos.x, bird.pos.y, neighborCount + 1)
-			// The first item is bird itself since it has distance 0.
-			neighborIds.shift()
-			let neighbors = neighborIds.map((id: number) => z0[id])
-
-			bird.update(neighbors, predator, scale, p.width, p.height, 50, undefined)
-		}
-
-		const dt = p.deltaTime / 1000
-		for (let bird of z0) {
-			bird.vel.add(bird.acc)
-
-			let deltaV = bird.vel.copy().mult(dt)
-			bird.pos.add(deltaV)
-			bird.draw(p)
-		}
-
-		p.fill("cyan")
-		p.stroke(0)
-		p.circle(predator.x, predator.y, 10)
+		z0.draw(p, 6, 2, "#999")
+		z1.draw(p, 10, 3, "#fff")
 		// for (let bird of z1) {
 		// 	bird.update(direction)
 		// 	bird.draw(p)
