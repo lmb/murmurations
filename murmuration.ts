@@ -34,19 +34,25 @@ class Bird {
 		return { start, end }
 	}
 
-	update(neighbors: Bird[], width: number, height: number, overshoot: number = 0, p?: p5) {
+	update(neighbors: Bird[], predator: p5.Vector, scale: number, width: number, height: number, overshoot: number = 0, p?: p5) {
 		this.acc = new p5.Vector()
+
+		{
+			let dist = this.pos.copy().sub(predator)
+			let force = dist.copy().normalize().setMag(800 / dist.mag())
+			this.acc = this.acc.add(force)
+			this.debugForce(p, force, "red")
+		}
 
 		// Separation: avoid colliding with neighbors.
 		// For each neighbour, calculate the distance.
 		// If the distance is closer than some threshold, move away in the opposite direction.
 		{
 			for (let boid of neighbors) {
-				let scale = parseFloat(separationSlider.value)
 				let dist = this.pos.copy().sub(boid.pos)
-				let force = dist.copy().setMag(1 / dist.magSq() * 2000 * scale)
+				let force = dist.copy().setMag(1 / dist.magSq() * 2000)
 				this.acc = this.acc.add(force)
-				this.debugForce(p, force, "green")
+				// this.debugForce(p, force, "green")
 			}
 		}
 
@@ -64,7 +70,7 @@ class Bird {
 			let scale = parseFloat(alignmentSlider.value)
 			const force = averageHeading.setMag(10 * scale)
 			this.acc = this.acc.add(force)
-			this.debugForce(p, force, "blue")
+			// this.debugForce(p, force, "blue")
 		}
 
 		// Cohesion: steer towards center of mass of neighbors.
@@ -81,7 +87,7 @@ class Bird {
 				p.circle(centerOfMass.x, centerOfMass.y, 2)
 			}
 
-			let scale = parseFloat(cohesionSlider.value)
+			// let scale = parseFloat(cohesionSlider.value)
 			const force = centerOfMass.sub(this.pos).setMag(20 * scale)
 			this.acc = this.acc.add(force)
 			// this.debugForce(p, force, "red")
@@ -159,13 +165,14 @@ class Bird {
 
 let sketch = (p: p5) => {
 	let z0: Bird[] = []
-	let perlinT = 0
+	let neighborsT = 0
+	let predator: p5.Vector
+	let predatorT = 0
 
 	p.setup = () => {
 		let canvas = document.getElementById('canvas')!
 		p.createCanvas(canvas.clientWidth, canvas.clientHeight, canvas)
-		let vel = new p5.Vector(0)
-		// vel.setMag(1)
+		predator = new p5.Vector(p.random(0, p.height), p.random(0, p.width))
 		for (let i = 0; i < 400; i++) {
 			let b = new Bird(p, 20, 3, 110)
 			z0.push(b)
@@ -185,12 +192,20 @@ let sketch = (p: p5) => {
 		}
 		fb0.finish()
 
-
 		const maxNeighbors = z0.length / 4
-		let neighborCount = Math.round(p.map(p.noise(perlinT), 0, 1, 6, maxNeighbors))
+		// let neighborCount = Math.round(p.map(p.noise(neighborsT), 0, 1, 6, maxNeighbors))
+		let neighborCount = maxNeighbors / 2
 		neighborSlider.value = neighborCount.toString()
 		neighborSlider.max = maxNeighbors.toString()
-		perlinT += 0.005
+
+		let scale = p.map(p.noise(neighborsT), 0, 1, -0.5, 1)
+		neighborsT += 0.02
+		separationSlider.value = scale.toString()
+
+		// Update predator
+		predator.x = p.map(p.noise(predatorT), 0, 1, 0, p.width)
+		predator.y = p.map(p.noise(predatorT + 1337), 0, 1, 0, p.height)
+		predatorT += 0.005
 
 		for (let bird of z0) {
 			let neighborIds = fb0.neighbors(bird.pos.x, bird.pos.y, neighborCount + 1)
@@ -198,7 +213,7 @@ let sketch = (p: p5) => {
 			neighborIds.shift()
 			let neighbors = neighborIds.map((id: number) => z0[id])
 
-			bird.update(neighbors, p.width, p.height, 0, p)
+			bird.update(neighbors, predator, scale, p.width, p.height, 50, undefined)
 		}
 
 		const dt = p.deltaTime / 1000
@@ -209,6 +224,10 @@ let sketch = (p: p5) => {
 			bird.pos.add(deltaV)
 			bird.draw(p)
 		}
+
+		p.fill("cyan")
+		p.stroke(0)
+		p.circle(predator.x, predator.y, 10)
 		// for (let bird of z1) {
 		// 	bird.update(direction)
 		// 	bird.draw(p)
