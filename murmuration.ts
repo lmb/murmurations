@@ -156,7 +156,7 @@ class Bird {
 }
 
 class Murmuration {
-	z0: Bird[] = []
+	birds: Bird[] = []
 	neighborsT = 0
 	predator = new p5.Vector()
 	predatorT = 0
@@ -166,13 +166,13 @@ class Murmuration {
 			const x = p.randomGaussian(p.width / 2, p.width / 2 / 4)
 			const y = p.randomGaussian(p.height / 2, p.height / 2 / 4)
 			let b = new Bird(x, y)
-			this.z0.push(b)
+			this.birds.push(b)
 		}
 	}
 
 	update(p: p5, numNeighbors: number): number {
-		let fb0 = new Flatbush(this.z0.length)
-		for (let bird of this.z0) {
+		let fb0 = new Flatbush(this.birds.length)
+		for (let bird of this.birds) {
 			fb0.add(bird.pos.x, bird.pos.y)
 		}
 		fb0.finish()
@@ -185,11 +185,11 @@ class Murmuration {
 		this.predator.y = p.map(p.noise(this.predatorT + 1337), 0, 1, 0, p.height)
 		this.predatorT += 0.005
 
-		for (let bird of this.z0) {
+		for (let bird of this.birds) {
 			let neighborIds = fb0.neighbors(bird.pos.x, bird.pos.y, numNeighbors + 1)
 			// The first item is bird itself since it has distance 0.
 			neighborIds.shift()
-			let neighbors = neighborIds.map((id: number) => this.z0[id])
+			let neighbors = neighborIds.map((id: number) => this.birds[id])
 
 			bird.update(neighbors, this.predator, scale, p.width, p.height, 50, undefined)
 		}
@@ -199,7 +199,7 @@ class Murmuration {
 
 	draw(p: p5, len: number, weight: number, color: string) {
 		const dt = p.deltaTime / 1000
-		for (let bird of this.z0) {
+		for (let bird of this.birds) {
 			bird.vel.add(bird.acc)
 
 			let deltaV = bird.vel.copy().mult(dt)
@@ -217,6 +217,7 @@ let sketch = (p: p5) => {
 	const numBoids = 400
 	let z0: Murmuration
 	let z1: Murmuration
+	let z2: Murmuration
 
 	p.setup = () => {
 		let canvas = document.getElementById('canvas')!
@@ -228,6 +229,7 @@ let sketch = (p: p5) => {
 
 		z0 = new Murmuration(p, numBoids)
 		z1 = new Murmuration(p, numBoids)
+		z2 = new Murmuration(p, numBoids)
 	}
 
 	p.draw = () => {
@@ -237,11 +239,13 @@ let sketch = (p: p5) => {
 
 		let scale = z0.update(p, numNeighbors)
 		z1.update(p, numNeighbors)
+		z2.update(p, numNeighbors)
 
 		separationSlider.value = scale.toString()
 
-		z0.draw(p, 6, 2, "#999")
-		z1.draw(p, 10, 3, "#fff")
+		z0.draw(p, 4, 1, "#1673f8")
+		z1.draw(p, 6, 2, "#5478b1")
+		z2.draw(p, 10, 3, "#fff")
 		// for (let bird of z1) {
 		// 	bird.update(direction)
 		// 	bird.draw(p)
