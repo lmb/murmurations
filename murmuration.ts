@@ -10,15 +10,17 @@ class Bird {
 	pos: p5.Vector
 	vel: p5.Vector
 	acc: p5.Vector
+	tmp: p5.Vector
 
 	constructor(x: number, y: number) {
 		this.pos = new p5.Vector(x, y)
 		this.vel = new p5.Vector()
 		this.acc = new p5.Vector()
+		this.tmp = new p5.Vector()
 	}
 
-	update(neighbors: Bird[], predator: p5.Vector, scale: number, width: number, height: number, overshoot: number = 0, p?: p5) {
-		this.acc = new p5.Vector()
+	update(neighborIds: number[], allBirds: Bird[], predator: p5.Vector, scale: number, width: number, height: number, overshoot: number = 0, p?: p5) {
+		this.acc.set()
 
 		{
 			let dist = this.pos.copy().sub(predator)
@@ -31,10 +33,12 @@ class Bird {
 		// For each neighbour, calculate the distance.
 		// If the distance is closer than some threshold, move away in the opposite direction.
 		{
-			for (let boid of neighbors) {
-				let dist = this.pos.copy().sub(boid.pos)
-				let force = dist.copy().setMag(1 / dist.magSq() * 2000)
-				this.acc = this.acc.add(force)
+			for (let id of neighborIds) {
+				let boid = allBirds[id]
+				this.tmp.set(this.pos)
+				this.tmp.sub(boid.pos)
+				this.tmp.setMag(1 / this.tmp.magSq() * 2000)
+				this.acc = this.acc.add(this.tmp)
 				// this.debugForce(p, force, "green")
 			}
 		}
@@ -42,16 +46,17 @@ class Bird {
 		// Alignment: steer towards average heading.
 		// This is the only input of acceleration into the system.
 		{
+			let alignmentScale = parseFloat(alignmentSlider.value)
 			let averageHeading = new p5.Vector()
-			for (const bird of neighbors) {
-				let heading = bird.vel.copy().normalize()
+			for (let id of neighborIds) {
+				let boid = allBirds[id]
+				let heading = boid.vel.copy().normalize()
 				averageHeading.add(heading)
 			}
-			averageHeading.div(neighbors.length)
+			averageHeading.div(neighborIds.length)
 
 			// Create a steering force towards the average heading
-			let scale = parseFloat(alignmentSlider.value)
-			const force = averageHeading.setMag(10 * scale)
+			const force = averageHeading.setMag(10 + 30 * scale)
 			this.acc = this.acc.add(force)
 			// this.debugForce(p, force, "blue")
 		}
@@ -59,10 +64,11 @@ class Bird {
 		// Cohesion: steer towards center of mass of neighbors.
 		{
 			let centerOfMass = new p5.Vector()
-			for (const bird of neighbors) {
-				centerOfMass.add(bird.pos)
+			for (let id of neighborIds) {
+				let boid = allBirds[id]
+				centerOfMass.add(boid.pos)
 			}
-			centerOfMass.div(neighbors.length)
+			centerOfMass.div(neighborIds.length)
 
 			if (p) {
 				p.stroke("red")
@@ -74,14 +80,6 @@ class Bird {
 			const force = centerOfMass.sub(this.pos).setMag(20 * scale)
 			this.acc = this.acc.add(force)
 			// this.debugForce(p, force, "red")
-		}
-
-		// Drag
-		{
-			let dragMag = this.vel.magSq() / 1500
-			let drag = this.vel.copy().mult(-1).setMag(dragMag)
-			this.acc = this.acc.add(drag)
-			this.debugForce(p, drag, "cyan")
 		}
 
 		// Repelling force from edges
@@ -114,6 +112,19 @@ class Bird {
 			this.debugForce(p, force, "yellow", edge.pos)
 			this.acc.add(force)
 		}
+
+		this.acc.limit(2000)
+
+		// Drag, must be calculated last to avoid very large
+		// intermediate velocity value.
+		{
+			this.tmp.set(this.vel)
+			// this.tmp.add(this.acc)
+			this.tmp.setMag(this.tmp.magSq() / 1500)
+			this.tmp.mult(-1)
+			this.acc.add(this.tmp)
+			this.debugForce(p, this.tmp, "cyan")
+		}
 	}
 
 	debugForce(p: p5 | undefined, force: p5.Vector, color: string, pos?: p5.Vector) {
@@ -145,8 +156,8 @@ class Murmuration {
 
 	constructor(p: p5, num: number) {
 		for (let i = 0; i < num; i++) {
-			const x = p.randomGaussian(0, p.width / 8)
-			const y = p.randomGaussian(0, p.height / 8)
+			const x = p.randomGaussian(0, p.width / 4)
+			const y = p.randomGaussian(0, p.height / 4)
 			let b = new Bird(x, y)
 			this.birds.push(b)
 		}
@@ -171,13 +182,16 @@ class Murmuration {
 			let neighborIds = fb0.neighbors(bird.pos.x, bird.pos.y, numNeighbors + 1)
 			// The first item is bird itself since it has distance 0.
 			neighborIds.shift()
-			let neighbors = neighborIds.map((id: number) => this.birds[id])
-
-			bird.update(neighbors, this.predator, scale, p.width, p.height, 50, undefined)
+			bird.update(neighborIds, this.birds, this.predator, scale, p.width, p.height, 50, undefined)
 		}
 
 		for (let bird of this.birds) {
+			// let old = bird.vel.copy()
 			bird.vel.add(bird.acc)
+			// if (bird.vel.mag() > 1500) {
+			// console.log(old)
+			// debugger
+			// }
 
 			let deltaV = bird.vel.copy().mult(deltaT)
 			bird.pos.add(deltaV)
