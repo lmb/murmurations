@@ -314,7 +314,7 @@ let sketch = (p: p5) => {
 		separationSlider.value = dist2.toString()
 		distanceT += 0.03
 
-		const dt = p.deltaTime / 1000
+		const dt = Math.min(p.deltaTime / 1000, 1.0)
 		// let scale = z0.update(p, numNeighbors, dt)
 		let scale = z1.update(p, numNeighbors, dt)
 		z2.update(p, numNeighbors, dt)
