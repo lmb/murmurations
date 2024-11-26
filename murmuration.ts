@@ -6,6 +6,8 @@ let separationSlider = document.getElementById("separation")! as HTMLInputElemen
 let cohesionSlider = document.getElementById("cohesion")! as HTMLInputElement
 let alignmentSlider = document.getElementById("alignment")! as HTMLInputElement
 let threeDCheckbox = document.getElementById("3d")! as HTMLInputElement
+let fullscreenButton = document.getElementById("fullscreen")! as HTMLInputElement
+let canvas = document.getElementById('canvas')! as HTMLCanvasElement
 
 class Bird {
 	pos: p5.Vector
@@ -288,7 +290,6 @@ let sketch = (p: p5) => {
 	}
 
 	p.setup = () => {
-		let canvas = document.getElementById('canvas')!
 		const maxNeighbors = numBoids / 4
 		let neighborCount = maxNeighbors / 2
 		neighborSlider.value = neighborCount.toString()
@@ -321,7 +322,7 @@ let sketch = (p: p5) => {
 		cohesionSlider.value = scale.toString()
 		// let dist1 = parseFloat(separationSlider.value)
 
-		let c1 = p.color("#5478b1")
+		let c1 = p.color("#9a9aff")
 		let c2 = p.color("#fff")
 
 		if (threeDCheckbox.checked) {
@@ -336,3 +337,15 @@ let sketch = (p: p5) => {
 }
 
 new p5(sketch)
+
+document.addEventListener("keydown", (event) => {
+	if (event.key === "3") {
+		threeDCheckbox.checked = !threeDCheckbox.checked
+	}
+})
+
+fullscreenButton.addEventListener("click", (event) => {
+	if (canvas.requestFullscreen) {
+		canvas.requestFullscreen()
+	}
+})

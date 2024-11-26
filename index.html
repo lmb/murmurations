@@ -42,8 +42,11 @@
 			<label for="3d">3D:</label>
 			<input type="checkbox" id="3d" name="3d">
 		</div>
+		<div style="display: flex; align-items: center; gap: 5px;"></div>
+		<input type="button" id="fullscreen" name="fullscreen" value="Fullscreen">
 	</div>
-	<canvas id="canvas" style="height: calc(100vh - 100px);"></canvas>
+	</div>
+	<canvas id="canvas" style="height: calc(100vh - 45px);"></canvas>
 	<script type="module">
 		if (!window.IS_PRODUCTION) {
 			new EventSource('/esbuild').addEventListener('change', () => location.reload())
