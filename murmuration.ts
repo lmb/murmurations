@@ -5,6 +5,7 @@ let neighborSlider = document.getElementById("neighbors")! as HTMLInputElement
 let separationSlider = document.getElementById("separation")! as HTMLInputElement
 let cohesionSlider = document.getElementById("cohesion")! as HTMLInputElement
 let alignmentSlider = document.getElementById("alignment")! as HTMLInputElement
+let threeDCheckbox = document.getElementById("3d")! as HTMLInputElement
 
 class Bird {
 	pos: p5.Vector
@@ -320,17 +321,17 @@ let sketch = (p: p5) => {
 		cohesionSlider.value = scale.toString()
 		// let dist1 = parseFloat(separationSlider.value)
 
-		// z0.draw(p, 4, 1, "#1673f8")
-		// z1.draw(p, 6, 2, "#5478b1")
+		let c1 = p.color("#5478b1")
+		let c2 = p.color("#fff")
 
-		// drawBirdsAnaglyph(p, l0, z0, 4, 2, p.color("#1673f8"), dist1 * 4)
-		drawBirdsAnaglyph(p, z1, 6, 2, p.color("#5478b1"), dist1)
-		drawBirdsAnaglyph(p, z2, 10, 3, p.color("#fff"), dist2)
+		if (threeDCheckbox.checked) {
+			drawBirdsAnaglyph(p, z1, 6, 2, c1, dist1)
+			drawBirdsAnaglyph(p, z2, 10, 3, c2, dist2)
+		} else {
+			drawBirds(p, z1, 6, 2, c1)
+			drawBirds(p, z2, 10, 3, c2)
+		}
 
-		// for (let bird of z1) {
-		// 	bird.update(direction)
-		// 	bird.draw(p)
-		// }
 	}
 }
 
