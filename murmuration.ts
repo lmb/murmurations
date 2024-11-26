@@ -322,7 +322,7 @@ let sketch = (p: p5) => {
 		cohesionSlider.value = scale.toString()
 		// let dist1 = parseFloat(separationSlider.value)
 
-		let c1 = p.color("#9a9aff")
+		let c1 = p.color("#ffc94c")
 		let c2 = p.color("#fff")
 
 		if (threeDCheckbox.checked) {
