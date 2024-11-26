@@ -4,6 +4,7 @@ import http from 'node:http'
 let ctx = await esbuild.context({
 	entryPoints: ['murmuration.ts', 'index.html'],
 	outdir: 'public',
+	minify: false,
 	bundle: true,
 	sourcemap: true,
 	format: 'esm',
