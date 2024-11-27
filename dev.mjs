@@ -9,6 +9,9 @@ let ctx = await esbuild.context({
 	sourcemap: true,
 	format: 'esm',
 	loader: { '.html': 'copy' },
+	define: {
+		'window.DEBUG': 'true'
+	}
 })
 
 await ctx.watch()
