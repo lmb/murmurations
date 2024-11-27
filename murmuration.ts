@@ -87,33 +87,24 @@ class Bird {
 
 		// Repelling force from edges
 		const edges = [
-			{
-				pos: new p5.Vector(this.pos.x, -height / 2 - overshoot),
-				clamp: (v: p5.Vector) => v.y = Math.max(-height / 2, v.y),
-			}, // top
-			{
-				pos: new p5.Vector(this.pos.x, height / 2 + overshoot),
-				clamp: (v: p5.Vector) => v.y = Math.min(height / 2, v.y)
-			}, // bottom
-			{
-				pos: new p5.Vector(-width / 2 - overshoot, this.pos.y),
-				clamp: (v: p5.Vector) => v.x = Math.max(-width / 2, v.x),
-			}, // left
-			{
-				pos: new p5.Vector(width / 2 + overshoot, this.pos.y),
-				clamp: (v: p5.Vector) => v.x = Math.min(width / 2, v.x),
-			}, // right
+			(e: p5.Vector) => e.y = -height / 2 - overshoot, // top
+			(e: p5.Vector) => e.y = height / 2 + overshoot, // bottom 
+			(e: p5.Vector) => e.x = -width / 2 - overshoot, // left
+			(e: p5.Vector) => e.x = width / 2 + overshoot, // right
 		]
 
 		for (let edge of edges) {
-			let dist = this.pos.copy().sub(edge.pos)
+			this.tmp.set(this.pos)
+			edge(this.tmp)
 
-			// Ensure that particles can't get to the "invisible" side of the edge.
-			edge.clamp(dist)
+			const dist = this.tmp.dist(this.pos)
 
-			let force = dist.copy().normalize().mult(800 / dist.mag())
-			this.debugForce(p, force, "yellow", edge.pos)
-			this.acc.add(force)
+			// Force always goes from the edge to the center (???)
+			this.tmp.sub(0, 0, 0).mult(-1).setMag(800 / dist)
+
+			// let force = dist.copy().normalize().mult()
+			// this.debugForce(p, force, "yellow", this.tmp)
+			this.acc.add(this.tmp)
 		}
 
 		this.acc.limit(2000)
