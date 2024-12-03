@@ -4,7 +4,6 @@ import Flatbush from 'flatbush'
 let neighborSlider = document.getElementById("neighbors")! as HTMLInputElement
 let separationSlider = document.getElementById("separation")! as HTMLInputElement
 let cohesionSlider = document.getElementById("cohesion")! as HTMLInputElement
-let alignmentSlider = document.getElementById("alignment")! as HTMLInputElement
 let threeDCheckbox = document.getElementById("3d")! as HTMLInputElement
 let pauseCheckbox = document.getElementById("pause")! as HTMLInputElement
 let forcesCheckbox = document.getElementById("forces")! as HTMLInputElement
@@ -47,14 +46,13 @@ class Bird {
 				this.tmp.sub(boid.pos)
 				this.tmp.setMag(1 / this.tmp.magSq() * 2000)
 				this.acc = this.acc.add(this.tmp)
-				// this.debugForce(p, force, "green")
+				// this.debugForce(p, this.tmp, "green")
 			}
 		}
 
 		// Alignment: steer towards average heading.
 		// This is the only input of acceleration into the system.
 		{
-			let alignmentScale = parseFloat(alignmentSlider.value)
 			let averageHeading = new p5.Vector()
 			for (let id of neighborIds) {
 				let boid = allBirds[id]
@@ -66,7 +64,7 @@ class Bird {
 			// Create a steering force towards the average heading
 			const force = averageHeading.setMag(10 + 30 * scale)
 			this.acc = this.acc.add(force)
-			// this.debugForce(p, force, "blue")
+			this.debugForce(p, force, "blue")
 		}
 
 		// Cohesion: steer towards center of mass of neighbors.
@@ -84,7 +82,6 @@ class Bird {
 				p.circle(centerOfMass.x, centerOfMass.y, 2)
 			}
 
-			// let scale = parseFloat(cohesionSlider.value)
 			const force = centerOfMass.sub(this.pos).setMag(20 * scale)
 			this.acc = this.acc.add(force)
 			// this.debugForce(p, force, "red")
@@ -107,9 +104,8 @@ class Bird {
 			// Force always goes from the edge to the center (???)
 			this.tmp.sub(0, 0, 0).mult(-1).setMag(800 / dist)
 
-			// let force = dist.copy().normalize().mult()
-			// this.debugForce(p, force, "yellow", this.tmp)
 			this.acc.add(this.tmp)
+			this.debugForce(p, this.tmp, "yellow")
 		}
 
 		this.acc.limit(2000)
@@ -122,7 +118,7 @@ class Bird {
 			this.tmp.setMag(this.tmp.magSq() / 1500)
 			this.tmp.mult(-1)
 			this.acc.add(this.tmp)
-			this.debugForce(p, this.tmp, "cyan")
+			// this.debugForce(p, this.tmp, "cyan")
 		}
 	}
 
