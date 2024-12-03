@@ -308,8 +308,8 @@ let sketch = (p: p5) => {
 		}
 
 		if (!paused) {
-			const dist1 = p.map(p.noise(distanceT + 999), 0, 1, 7, 12)
-			const dist2 = p.map(p.noise(distanceT + 99999), 0, 1, 2, 7)
+			const dist1 = p.map(p.noise(distanceT + 999), 0, 1, 5, 10)
+			const dist2 = p.map(p.noise(distanceT + 99999), 0, 1, -7, 0)
 			separationSlider.value = dist2.toString()
 			distanceT += 0.03
 
