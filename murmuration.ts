@@ -6,8 +6,13 @@ let separationSlider = document.getElementById("separation")! as HTMLInputElemen
 let cohesionSlider = document.getElementById("cohesion")! as HTMLInputElement
 let alignmentSlider = document.getElementById("alignment")! as HTMLInputElement
 let threeDCheckbox = document.getElementById("3d")! as HTMLInputElement
+let pauseCheckbox = document.getElementById("pause")! as HTMLInputElement
+let forcesCheckbox = document.getElementById("forces")! as HTMLInputElement
 let fullscreenButton = document.getElementById("fullscreen")! as HTMLInputElement
+let stepButton = document.getElementById("step")! as HTMLInputElement
 let canvas = document.getElementById('canvas')! as HTMLCanvasElement
+
+let step = false
 
 class Bird {
 	pos: p5.Vector
@@ -157,7 +162,7 @@ class Murmuration {
 		}
 	}
 
-	update(p: p5, numNeighbors: number, deltaT: number): number {
+	update(p: p5, numNeighbors: number, deltaT: number, showForces = false): number {
 		let fb0 = new Flatbush(this.birds.length)
 		for (let bird of this.birds) {
 			fb0.add(bird.pos.x, bird.pos.y)
@@ -172,21 +177,20 @@ class Murmuration {
 		this.predator.y = p.map(p.noise(this.predatorT + 1337), 0, 1, -p.height / 2, p.height / 2)
 		this.predatorT += 0.005
 
+		let debugP = undefined
+		if (showForces) {
+			debugP = p
+		}
+
 		for (let bird of this.birds) {
 			let neighborIds = fb0.neighbors(bird.pos.x, bird.pos.y, numNeighbors + 1)
 			// The first item is bird itself since it has distance 0.
 			neighborIds.shift()
-			bird.update(neighborIds, this.birds, this.predator, scale, p.width, p.height, 50, undefined)
+			bird.update(neighborIds, this.birds, this.predator, scale, p.width, p.height, 50, debugP)
 		}
 
 		for (let bird of this.birds) {
-			// let old = bird.vel.copy()
 			bird.vel.add(bird.acc)
-			// if (bird.vel.mag() > 1500) {
-			// console.log(old)
-			// debugger
-			// }
-
 			let deltaV = bird.vel.copy().mult(deltaT)
 			bird.pos.add(deltaV)
 		}
@@ -296,34 +300,45 @@ let sketch = (p: p5) => {
 
 
 	p.draw = () => {
-		p.background(0)
+		const showForces = forcesCheckbox.checked
+		let paused = pauseCheckbox.checked
 
-		let numNeighbors = parseInt(neighborSlider.value)
+		let dt = Math.min(p.deltaTime / 1000, 1.0)
 
-		const dist1 = p.map(p.noise(distanceT + 999), 0, 1, 7, 12)
-		const dist2 = p.map(p.noise(distanceT + 99999), 0, 1, 2, 7)
-		separationSlider.value = dist2.toString()
-		distanceT += 0.03
-
-		const dt = Math.min(p.deltaTime / 1000, 1.0)
-		// let scale = z0.update(p, numNeighbors, dt)
-		let scale = z1.update(p, numNeighbors, dt)
-		z2.update(p, numNeighbors, dt)
-
-		cohesionSlider.value = scale.toString()
-		// let dist1 = parseFloat(separationSlider.value)
-
-		let c1 = p.color("#ffc94c")
-		let c2 = p.color("#fff")
-
-		if (threeDCheckbox.checked) {
-			drawBirdsAnaglyph(p, z1, 6, 2, c1, dist1)
-			drawBirdsAnaglyph(p, z2, 10, 3, c2, dist2)
-		} else {
-			drawBirds(p, z1, 6, 2, c1)
-			drawBirds(p, z2, 10, 3, c2)
+		if (step) {
+			dt = 1.0 / 30 // One frame at 30 fps
+			step = false
+			paused = false
 		}
 
+		if (!paused) {
+			const dist1 = p.map(p.noise(distanceT + 999), 0, 1, 7, 12)
+			const dist2 = p.map(p.noise(distanceT + 99999), 0, 1, 2, 7)
+			separationSlider.value = dist2.toString()
+			distanceT += 0.03
+
+			let numNeighbors = parseInt(neighborSlider.value)
+
+			p.background(0)
+
+			// let scale = z0.update(p, numNeighbors, dt)
+			let scale = z1.update(p, numNeighbors, dt, false)
+			z2.update(p, numNeighbors, dt, showForces)
+
+			cohesionSlider.value = scale.toString()
+			// let dist1 = parseFloat(separationSlider.value)
+
+			let c1 = p.color("#ffc94c")
+			let c2 = p.color("#fff")
+
+			if (threeDCheckbox.checked) {
+				drawBirdsAnaglyph(p, z1, 6, 2, c1, dist1)
+				drawBirdsAnaglyph(p, z2, 10, 3, c2, dist2)
+			} else {
+				drawBirds(p, z1, 6, 2, c1)
+				drawBirds(p, z2, 10, 3, c2)
+			}
+		}
 	}
 }
 
@@ -332,11 +347,21 @@ new p5(sketch)
 document.addEventListener("keydown", (event) => {
 	if (event.key === "3") {
 		threeDCheckbox.checked = !threeDCheckbox.checked
+	} else if (event.key == "p") {
+		pauseCheckbox.checked = !pauseCheckbox.checked
+	} else if (event.key == "s") {
+		step = true
+	} else if (event.key == "f") {
+		forcesCheckbox.checked = !forcesCheckbox.checked
 	}
 })
 
-fullscreenButton.addEventListener("click", (event) => {
+fullscreenButton.addEventListener("click", () => {
 	if (canvas.requestFullscreen) {
 		canvas.requestFullscreen()
 	}
+})
+
+stepButton.addEventListener("click", () => {
+	step = true
 })
