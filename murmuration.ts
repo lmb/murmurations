@@ -361,3 +361,13 @@ fullscreenButton.addEventListener("click", () => {
 stepButton.addEventListener("click", () => {
 	step = true
 })
+
+declare global {
+	interface Window {
+		DEBUG?: boolean
+	}
+}
+
+if (window.DEBUG) {
+	new EventSource('/esbuild').addEventListener('change', () => location.reload())
+}

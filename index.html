@@ -75,11 +75,6 @@
 		</div>
 	</div>
 	<canvas id="canvas"></canvas>
-	<script type="module">
-		if (window.DEBUG) {
-			new EventSource('/esbuild').addEventListener('change', () => location.reload())
-		}
-	</script>
 	<script src="murmuration.js" type="module"></script>
 </body>
 
