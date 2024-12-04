@@ -16,130 +16,98 @@ let step = false
 class Bird {
 	pos: p5.Vector
 	vel: p5.Vector
-	acc: p5.Vector
-	tmp: p5.Vector
+	predatorForce: p5.Vector
+	separationForce: p5.Vector
+	alignmentForce: p5.Vector
+	centerOfMass: p5.Vector
+	cohesionForce: p5.Vector
+	edgeForce: p5.Vector
+	dragForce: p5.Vector
 
 	constructor(x: number, y: number) {
 		this.pos = new p5.Vector(x, y)
 		this.vel = new p5.Vector()
-		this.acc = new p5.Vector()
-		this.tmp = new p5.Vector()
+		this.predatorForce = new p5.Vector()
+		this.separationForce = new p5.Vector()
+		this.alignmentForce = new p5.Vector()
+		this.centerOfMass = new p5.Vector()
+		this.cohesionForce = new p5.Vector()
+		this.edgeForce = new p5.Vector()
+		this.dragForce = new p5.Vector()
 	}
 
-	update(neighborIds: number[], allBirds: Bird[], predator: p5.Vector, scale: number, width: number, height: number, overshoot: number = 0, p?: p5) {
-		this.acc.set()
-
+	update(neighborIds: number[], allBirds: Bird[], predator: p5.Vector, scale: number, width: number, height: number) {
 		{
-			let dist = this.pos.copy().sub(predator)
-			let force = dist.copy().normalize().setMag(800 / dist.mag())
-			this.acc = this.acc.add(force)
-			this.debugForce(p, force, "red")
+			this.predatorForce.set(this.pos)
+			this.predatorForce.sub(predator)
+			this.predatorForce.setMag(800 / this.predatorForce.mag())
 		}
 
 		// Separation: avoid colliding with neighbors.
 		// For each neighbour, calculate the distance.
 		// If the distance is closer than some threshold, move away in the opposite direction.
 		{
+			this.separationForce.set()
+			let tmp = new p5.Vector()
 			for (let id of neighborIds) {
 				let boid = allBirds[id]
-				this.tmp.set(this.pos)
-				this.tmp.sub(boid.pos)
-				this.tmp.setMag(1 / this.tmp.magSq() * 2000)
-				this.acc = this.acc.add(this.tmp)
-				// this.debugForce(p, this.tmp, "green")
+				tmp.set(this.pos)
+				tmp.sub(boid.pos)
+				tmp.setMag(1 / tmp.magSq() * 2000)
+				this.separationForce.add(tmp)
 			}
 		}
 
 		// Alignment: steer towards average heading.
 		// This is the only input of acceleration into the system.
 		{
-			let averageHeading = new p5.Vector()
+			this.alignmentForce.set()
 			for (let id of neighborIds) {
 				let boid = allBirds[id]
 				let heading = boid.vel.copy().normalize()
-				averageHeading.add(heading)
+				this.alignmentForce.add(heading)
 			}
-			averageHeading.div(neighborIds.length)
+			this.alignmentForce.div(neighborIds.length)
 
 			// Create a steering force towards the average heading
-			const force = averageHeading.setMag(10 + 30 * scale)
-			this.acc = this.acc.add(force)
-			this.debugForce(p, force, "blue")
+			this.alignmentForce.setMag(10 + 30 * scale)
 		}
 
 		// Cohesion: steer towards center of mass of neighbors.
 		{
-			let centerOfMass = new p5.Vector()
+			this.centerOfMass.set()
+			this.cohesionForce.set()
 			for (let id of neighborIds) {
 				let boid = allBirds[id]
-				centerOfMass.add(boid.pos)
+				this.centerOfMass.add(boid.pos)
 			}
-			centerOfMass.div(neighborIds.length)
+			this.centerOfMass.div(neighborIds.length)
 
-			if (p) {
-				p.stroke("red")
-				p.fill("red")
-				p.circle(centerOfMass.x, centerOfMass.y, 2)
-			}
-
-			const force = centerOfMass.sub(this.pos).setMag(20 * scale)
-			this.acc = this.acc.add(force)
-			// this.debugForce(p, force, "red")
+			this.cohesionForce.set(this.centerOfMass)
+			this.cohesionForce.sub(this.pos)
+			this.cohesionForce.setMag(20 * scale)
 		}
 
 		// Repelling force from edges
-		const edges = [
-			(e: p5.Vector) => e.y = -height / 2 - overshoot, // top
-			(e: p5.Vector) => e.y = height / 2 + overshoot, // bottom 
-			(e: p5.Vector) => e.x = -width / 2 - overshoot, // left
-			(e: p5.Vector) => e.x = width / 2 + overshoot, // right
-		]
+		{
+			this.edgeForce.set()
 
-		for (let edge of edges) {
-			this.tmp.set(this.pos)
-			edge(this.tmp)
+			let x = Math.max(0, Math.abs(this.pos.x) - (width / 2))
+			this.edgeForce.x = Math.sign(this.pos.x) * -1 * (x ** 2) / 200
 
-			const dist = this.tmp.dist(this.pos)
+			let y = Math.max(0, Math.abs(this.pos.y) - (height / 2))
+			this.edgeForce.y = Math.sign(this.pos.y) * -1 * (y ** 2) / 200
 
-			// Force always goes from the edge to the center (???)
-			this.tmp.sub(0, 0, 0).mult(-1).setMag(800 / dist)
-
-			this.acc.add(this.tmp)
-			this.debugForce(p, this.tmp, "yellow")
+			this.edgeForce.limit(1000)
 		}
-
-		this.acc.limit(2000)
 
 		// Drag, must be calculated last to avoid very large
 		// intermediate velocity value.
 		{
-			this.tmp.set(this.vel)
-			// this.tmp.add(this.acc)
-			this.tmp.setMag(this.tmp.magSq() / 1500)
-			this.tmp.mult(-1)
-			this.acc.add(this.tmp)
-			// this.debugForce(p, this.tmp, "cyan")
+			this.dragForce.set(this.vel)
+			this.dragForce.setMag(this.dragForce.magSq() / 1500)
+			this.dragForce.mult(-1)
 		}
-	}
-
-	debugForce(p: p5 | undefined, force: p5.Vector, color: string, pos?: p5.Vector) {
-		if (!p) {
-			return
-		}
-
-		if (!pos) {
-			pos = this.pos
-		}
-
-		if (force.mag() > 500) {
-			// Avoid rendering infinity things. Where does the infinity come from though?
-			return
-		}
-
-		p.stroke(color)
-		p.strokeWeight(1)
-		let end = pos.copy().add(force)
-		p.line(pos.x, pos.y, end.x, end.y)
 	}
 }
 
@@ -182,12 +150,23 @@ class Murmuration {
 			let neighborIds = fb0.neighbors(bird.pos.x, bird.pos.y, numNeighbors + 1)
 			// The first item is bird itself since it has distance 0.
 			neighborIds.shift()
-			bird.update(neighborIds, this.birds, this.predator, scale, p.width, p.height, 50, debugP)
+			bird.update(neighborIds, this.birds, this.predator, scale, p.width, p.height)
 		}
 
+		let acc = new p5.Vector()
+		let deltaV = new p5.Vector()
 		for (let bird of this.birds) {
-			bird.vel.add(bird.acc)
-			let deltaV = bird.vel.copy().mult(deltaT)
+			acc.set()
+			acc.add(bird.predatorForce)
+			acc.add(bird.separationForce)
+			acc.add(bird.alignmentForce)
+			acc.add(bird.cohesionForce)
+			acc.add(bird.edgeForce)
+			acc.add(bird.dragForce)
+
+			bird.vel.add(acc)
+			deltaV.set(bird.vel)
+			deltaV.mult(deltaT)
 			bird.pos.add(deltaV)
 		}
 
@@ -223,6 +202,29 @@ let sketch = (p: p5) => {
 	let l1: p5.Framebuffer
 	let distanceT = 0
 
+	function debugForce(p: p5, pos: p5.Vector, force: p5.Vector, color: string) {
+		p.push()
+		p.stroke(color)
+		p.strokeWeight(1)
+		let end = pos.copy().add(force)
+		p.line(pos.x, pos.y, end.x, end.y)
+		p.pop()
+	}
+
+	function debugForces(p: p5, sim: Murmuration) {
+		for (let bird of sim.birds) {
+			p.push()
+			p.strokeWeight(1)
+			p.stroke("red")
+			p.translate(bird.centerOfMass)
+			p.ellipsoid(1)
+			p.pop()
+
+			debugForce(p, bird.pos, bird.edgeForce, "yellow")
+			debugForce(p, bird.pos, bird.predatorForce, "red")
+		}
+	}
+
 	function drawBird(p: p5, center: p5.Vector, line: p5.Vector, weight: number, color: p5.Color) {
 		p.stroke(color)
 		p.strokeWeight(weight)
@@ -242,10 +244,6 @@ let sketch = (p: p5) => {
 			let line = bird.vel.copy().setMag(len)
 			drawBird(p, center, line, weight, color)
 		}
-
-		// p.fill("cyan")
-		// p.stroke(0)
-		// p.circle(this.predator.x, this.predator.y, 10)
 	}
 
 	function drawBirdsAnaglyph(p: p5, sim: Murmuration, len: number, weight: number, color: p5.Color, dist: number) {
@@ -307,15 +305,14 @@ let sketch = (p: p5) => {
 			paused = false
 		}
 
+		const dist1 = p.map(p.noise(distanceT + 999), 0, 1, 5, 10)
+		const dist2 = p.map(p.noise(distanceT + 99999), 0, 1, -7, 0)
+
 		if (!paused) {
-			const dist1 = p.map(p.noise(distanceT + 999), 0, 1, 5, 10)
-			const dist2 = p.map(p.noise(distanceT + 99999), 0, 1, -7, 0)
 			separationSlider.value = dist2.toString()
 			distanceT += 0.03
 
 			let numNeighbors = parseInt(neighborSlider.value)
-
-			p.background(0)
 
 			// let scale = z0.update(p, numNeighbors, dt)
 			let scale = z1.update(p, numNeighbors, dt, false)
@@ -323,18 +320,25 @@ let sketch = (p: p5) => {
 
 			cohesionSlider.value = scale.toString()
 			// let dist1 = parseFloat(separationSlider.value)
-
-			let c1 = p.color("#ffc94c")
-			let c2 = p.color("#fff")
-
-			if (threeDCheckbox.checked) {
-				drawBirdsAnaglyph(p, z1, 6, 2, c1, dist1)
-				drawBirdsAnaglyph(p, z2, 10, 3, c2, dist2)
-			} else {
-				drawBirds(p, z1, 6, 2, c1)
-				drawBirds(p, z2, 10, 3, c2)
-			}
 		}
+
+		let c1 = p.color("#ffc94c")
+		let c2 = p.color("#fff")
+
+		p.background(0)
+
+		if (showForces) {
+			debugForces(p, z2)
+		}
+
+		if (threeDCheckbox.checked) {
+			drawBirdsAnaglyph(p, z1, 6, 2, c1, dist1)
+			drawBirdsAnaglyph(p, z2, 10, 3, c2, dist2)
+		} else {
+			drawBirds(p, z1, 6, 2, c1)
+			drawBirds(p, z2, 10, 3, c2)
+		}
+
 	}
 }
 
