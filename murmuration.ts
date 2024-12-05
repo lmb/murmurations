@@ -163,6 +163,7 @@ class Murmuration {
 			acc.add(bird.cohesionForce)
 			acc.add(bird.edgeForce)
 			acc.add(bird.dragForce)
+			acc.limit(2000)
 
 			bird.vel.add(acc)
 			deltaV.set(bird.vel)
